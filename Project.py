@@ -3,6 +3,7 @@ from pprint import pprint
 from pyperclip import paste
 from ExcelStuff.first import wordMetaData
 from Word_Reference import WordReferenceClass, format_definition
+import pandas as pd
 
 # LOGGING ####################################################################################################
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -90,19 +91,27 @@ URL_or_content(clipboard)
 entire_text = getText("Imported article.docx")
 
 def create_frequency_list_from_text(text):
+    """Creates a list of words from the text and makes a panda-friendly dictionary"""
     grab_word_regex = re.compile(r"[ \"](\w+'?\w*)[ \.\,\!\?]") # Match entire regex. 
     #                                                           # Extract the bit from within the ()
     mo2 = grab_word_regex.findall(text)                  # makes a list of each string
 
-    global_dict = {}
+    data = {"word": [],
+        "frequency": [],
+            "known": []} #previously known as global_dict
     for word in mo2:
         lowerWord = word.lower()
-        global_dict.setdefault(lowerWord,0)
-        global_dict[lowerWord] += 1
+        data["word"].append(lowerWord)
+        data["frequency"].append(1)
+        data["known"].append(0)
 
-    output_list = sorted(global_dict.items(), key=lambda x:x[1])
-    output_list.reverse()
-    return(output_list)
+        # global_dict.setdefault(lowerWord,0)
+        # global_dict[lowerWord] += 1
+
+    # output_list = sorted(global_dict.items(), key=lambda x:x[1])
+    # output_list.reverse()
+    # return(output_list)
+    return data
 
 # TODO add words to frequency sheet ###########################################################################
 # How many words already on list?
@@ -113,21 +122,34 @@ def create_frequency_list_from_text(text):
 
 # TODO Make local frequency list
 
-output_list = create_frequency_list_from_text(entire_text)
-# pprint(output_list)
+current_article_data = create_frequency_list_from_text(entire_text) # makes a dictionary for current article (word, frequency, known)
+article_data_df = pd.DataFrame(current_article_data) # makes a data frame
+article_data_df["frequency"] = article_data_df.groupby(["word"])["frequency"].transform("sum") # add up the frequency for each time word appears
+df = article_data_df.drop_duplicates() # get rid of duplicate entries for each word
 
+# Save the data frame for the article as a csv using a time-stamped name
 from datetime import datetime as dt
 now = dt.today()
 now_str = now.strftime('%Y_%m_%d %H-%M-%S')
+df.to_csv(f"csvs/Frequency_{now_str}.csv")
 
-with open(f"csvs/Frequency_{now_str}.csv", "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerows(output_list)
+a = os.listdir(".\\csvs") # makes a list of each file in the csv folder
+df = pd.concat([pd.read_csv(f".\\csvs/"+filename, index_col=0) for filename in a]) # concatenates each csv to a mega csv in current folder
+df["frequency"] = df.groupby(["word"])["frequency"].transform("sum") # add up the frequencies for each word
+df = df.drop_duplicates(subset=["word"]) # remove duplicate entries for each word
+df.sort_values("frequency", axis = 0, ascending = False, inplace = True, ignore_index=True) # sort the data by frequency
+df.reset_index(drop=True, inplace=True)
+df.to_csv("combined_csv.csv", index=True, encoding="utf-8-sig") # save it in an accented character-friendly format
 
-with open(f"csvs/Frequency_{now_str}.csv", newline="") as f:
-    reader = csv.reader(f)
-    for row in reader:
-        print(row)
+
+# with open(f"csvs/Frequency_{now_str}.csv", "w", newline="") as f:
+#     writer = csv.writer(f)
+#     writer.writerows(output_list)
+
+# with open(f"csvs/Frequency_{now_str}.csv", newline="") as f:
+#     reader = csv.reader(f)
+#     for row in reader:
+#         print(row)
 
 # d = docx.Document("Imported article.docx")
 # d.add_page_break()

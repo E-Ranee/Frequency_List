@@ -15,7 +15,6 @@ for filename in a:
 
 with open(f"test.csv", "w", newline="") as f:
     writer = csv.writer(f)
-    writer.writerow(["word", "frequency"])
     writer.writerows(output_list)
     # SMOOSH THE CSV DATA TOGETHER
 
