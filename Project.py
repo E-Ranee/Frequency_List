@@ -7,7 +7,8 @@ import pandas as pd
 
 # LOGGING ####################################################################################################
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
-logging.disable(logging.CRITICAL)
+logging.disable(logging.DEBUG)
+# logging.disable(logging.CRITICAL)
 logging.debug("Start of program")
 
 def clipboard_to_doc(clipboard):
@@ -86,10 +87,6 @@ def getText(filename):
         fullText.append(para.text)
     return "\n".join(fullText)
 
-clipboard = paste()
-URL_or_content(clipboard) 
-entire_text = getText("Imported article.docx")
-
 def create_frequency_list_from_text(text):
     """Creates a list of words from the text and makes a panda-friendly dictionary"""
     grab_word_regex = re.compile(r"[ \"](\w+'?\w*)[ \.\,\!\?]") # Match entire regex. 
@@ -113,19 +110,16 @@ def create_frequency_list_from_text(text):
     # return(output_list)
     return data
 
-# TODO add words to frequency sheet ###########################################################################
-# How many words already on list?
-
-# TODO read csv and grab global data
-
-
-
-# TODO Make local frequency list
+clipboard = paste()
+URL_or_content(clipboard) 
+entire_text = getText("Imported article.docx")
+logging.info("Article successfully imported")
 
 current_article_data = create_frequency_list_from_text(entire_text) # makes a dictionary for current article (word, frequency, known)
 article_data_df = pd.DataFrame(current_article_data) # makes a data frame
 article_data_df["frequency"] = article_data_df.groupby(["word"])["frequency"].transform("sum") # add up the frequency for each time word appears
 article_data_df.drop_duplicates(inplace=True) # get rid of duplicate entries for each word
+logging.info("Article frequency list created")
 
 # Save the data frame for the article as a csv using a time-stamped name
 from datetime import datetime as dt
@@ -134,23 +128,27 @@ now_str = now.strftime('%Y_%m_%d %H-%M-%S')
 article_data_df.sort_values("frequency", axis = 0, ascending = False, inplace = True, ignore_index=True) # sort the data by frequency
 article_data_df.reset_index(drop=True, inplace=True)
 article_data_df.to_csv(f"csvs/Frequency_{now_str}.csv")
+logging.info(f"Article frequency list saved as Frequency_{now_str}.csv")
 
+# GENERATE MASTER CSV
 a = os.listdir(".\\csvs") # makes a list of each file in the csv folder
 df = pd.concat([pd.read_csv(f".\\csvs/"+filename, index_col=0) for filename in a]) # concatenates each csv to a mega csv in current folder
+logging.info("All previous csvs successfully concatonated")
 df["frequency"] = df.groupby(["word"])["frequency"].transform("sum") # add up the frequencies for each word
 df = df.drop_duplicates(subset=["word"]) # remove duplicate entries for each word
 df.sort_values("frequency", axis = 0, ascending = False, inplace = True, ignore_index=True) # sort the data by frequency
 df.reset_index(drop=True, inplace=True)
 df.to_csv("combined_csv.csv", index=True, encoding="utf-8-sig") # save it in an accented character-friendly format
+logging.info("Global frequency list saved")
 
+# APPEND DEFINITIONS TO DOCUMENT
 d = docx.Document("Imported article.docx")
 d.add_page_break()
 with open(f"csvs/Frequency_{now_str}.csv", newline="", encoding="utf-8-sig") as f:
     reader = csv.reader(f)
     rows = [r for r in reader]
-    no_of_rows = len(rows)
 
-    for row in rows[no_of_rows-5:]:
+    for row in rows[len(rows)-5:]: # For the 5 least frequent words
         r, p, _def = WordReferenceClass(row[1]).word_info()
         final_text = (f"""
         word: \t\t{r}
@@ -159,9 +157,15 @@ with open(f"csvs/Frequency_{now_str}.csv", newline="", encoding="utf-8-sig") as 
         """)
         d.add_paragraph(final_text)
     d.save("Imported article.docx")
+logging.info("5 definitions appended to document")
+
+known_words = [x.strip() for x in open('known_words.txt', 'r').readlines()]
+top_unknown_words = df[~df.word.isin(known_words)]
+print()
+print(top_unknown_words.head())
 
 # TODO Ask if 10 words are known. ##############################################################################
 #       if known, tick off
 #       if unknown, email
 # TODO Make an article highlighter to highlight known words/ unknown by frequency ##############################
-print("Done!")
+print("\nDone!\n")
