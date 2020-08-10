@@ -90,4 +90,4 @@ class WordReferenceClass():
     # return definition_text, definition_text2, definition_text3
 
 if __name__ == "__main__":
-    WordReferenceClass("volte").word_info()
+    format_definition("bandire")

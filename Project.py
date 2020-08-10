@@ -1,4 +1,4 @@
-import bs4, requests, docx, logging, openpyxl, re, csv, shutil, os
+import bs4, requests, docx, logging, re, csv, shutil, os
 from pprint import pprint
 from pyperclip import paste
 from ExcelStuff.first import wordMetaData
@@ -125,13 +125,15 @@ def create_frequency_list_from_text(text):
 current_article_data = create_frequency_list_from_text(entire_text) # makes a dictionary for current article (word, frequency, known)
 article_data_df = pd.DataFrame(current_article_data) # makes a data frame
 article_data_df["frequency"] = article_data_df.groupby(["word"])["frequency"].transform("sum") # add up the frequency for each time word appears
-df = article_data_df.drop_duplicates() # get rid of duplicate entries for each word
+article_data_df.drop_duplicates(inplace=True) # get rid of duplicate entries for each word
 
 # Save the data frame for the article as a csv using a time-stamped name
 from datetime import datetime as dt
 now = dt.today()
 now_str = now.strftime('%Y_%m_%d %H-%M-%S')
-df.to_csv(f"csvs/Frequency_{now_str}.csv")
+article_data_df.sort_values("frequency", axis = 0, ascending = False, inplace = True, ignore_index=True) # sort the data by frequency
+article_data_df.reset_index(drop=True, inplace=True)
+article_data_df.to_csv(f"csvs/Frequency_{now_str}.csv")
 
 a = os.listdir(".\\csvs") # makes a list of each file in the csv folder
 df = pd.concat([pd.read_csv(f".\\csvs/"+filename, index_col=0) for filename in a]) # concatenates each csv to a mega csv in current folder
@@ -141,28 +143,20 @@ df.sort_values("frequency", axis = 0, ascending = False, inplace = True, ignore_
 df.reset_index(drop=True, inplace=True)
 df.to_csv("combined_csv.csv", index=True, encoding="utf-8-sig") # save it in an accented character-friendly format
 
-
-# with open(f"csvs/Frequency_{now_str}.csv", "w", newline="") as f:
-#     writer = csv.writer(f)
-#     writer.writerows(output_list)
-
-# with open(f"csvs/Frequency_{now_str}.csv", newline="") as f:
-#     reader = csv.reader(f)
-#     for row in reader:
-#         print(row)
-
-# d = docx.Document("Imported article.docx")
-# d.add_page_break()
-# for word in output_list[len(output_list)-5:]:
-#     r, p, _def = WordReferenceClass(word[0]).word_info()
-
-#     final_text = (f"""
-#     word: \t\t{r}
-#     pronunciation: \t{p}
-#     definition: \t\t{_def}
-#     """)
-#     d.add_paragraph(final_text)
-# d.save("Imported article.docx")
+d = docx.Document("Imported article.docx")
+d.add_page_break()
+with open(f"csvs/Frequency_{now_str}.csv", newline="", encoding="utf-8-sig") as f:
+    reader = csv.reader(f)
+    # list_reader = list(reader)
+    for row in reader:
+        r, p, _def = WordReferenceClass(row[1]).word_info()
+        final_text = (f"""
+        word: \t\t{r}
+        pronunciation: \t{p}
+        definition: \t\t{_def}
+        """)
+        d.add_paragraph(final_text)
+    d.save("Imported article.docx")
 
 # TODO Ask if 10 words are known. ##############################################################################
 #       if known, tick off
