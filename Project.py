@@ -147,8 +147,10 @@ d = docx.Document("Imported article.docx")
 d.add_page_break()
 with open(f"csvs/Frequency_{now_str}.csv", newline="", encoding="utf-8-sig") as f:
     reader = csv.reader(f)
-    # list_reader = list(reader)
-    for row in reader:
+    rows = [r for r in reader]
+    no_of_rows = len(rows)
+
+    for row in rows[no_of_rows-5:]:
         r, p, _def = WordReferenceClass(row[1]).word_info()
         final_text = (f"""
         word: \t\t{r}
