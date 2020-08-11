@@ -146,15 +146,12 @@ logging.info("Global frequency list saved")
 #       if unknown, email
 
 def are_top_words_known(dataframe,number):
-    print(f"\n Top {number} unknown words:")
-    print(dataframe.head(number))
-    print()
+    unknown = []
     for i in dataframe.head(number).itertuples():
         print("\nDo you know the following word?\n")
         format_definition(i[1])
         print()
         known = input()
-        unknown = []
         
         with open("known_words.txt", "a") as myfile:
             if known.lower() == "yes" or known.lower() == "y":
@@ -169,25 +166,22 @@ unknown_master_words = are_top_words_known(top_unknown_words,5) # test top 5 wor
 known_words = [x.strip() for x in open('known_words.txt', 'r').readlines()]
 article_top_unknown_words = article_data_df[~article_data_df.word.isin(known_words)] # delete words in article list if _now_ known
 unknown_article_words = are_top_words_known(article_top_unknown_words,5) # test top 5 words of article list
+all_unknown_words = unknown_article_words + unknown_master_words
 print()
 
 # APPEND DEFINITIONS TO DOCUMENT
 d = docx.Document("Imported article.docx")
 d.add_page_break()
-with open(f"csvs/Frequency_{now_str}.csv", newline="", encoding="utf-8-sig") as f:
-    reader = csv.reader(f)
-    rows = [r for r in reader]
-
-    for row in rows[len(rows)-5:]: # For the 5 least frequent words
-        r, p, _def = WordReferenceClass(row[1]).word_info()
-        final_text = (f"""
-        word: \t\t{r}
-        pronunciation: \t{p}
-        definition: \t\t{_def}
-        """)
-        d.add_paragraph(final_text)
-    d.save("Imported article.docx")
-logging.info("5 definitions appended to document")
+for word in all_unknown_words: # For the 5 least frequent words
+    r, p, _def = WordReferenceClass(word).word_info()
+    final_text = (f"""
+    word: \t\t{r}
+    pronunciation: \t{p}
+    definition: \t\t{_def}
+    """)
+    d.add_paragraph(final_text)
+d.save("Imported article.docx")
+logging.info(f"{len(all_unknown_words)} definitions appended to document")
 
 
 
