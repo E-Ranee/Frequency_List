@@ -141,6 +141,36 @@ df.reset_index(drop=True, inplace=True)
 df.to_csv("combined_csv.csv", index=True, encoding="utf-8-sig") # save it in an accented character-friendly format
 logging.info("Global frequency list saved")
 
+# TODO Ask if 10 words are known. ##############################################################################
+#       if known, tick off
+#       if unknown, email
+
+def are_top_words_known(dataframe,number):
+    print(f"\n Top {number} unknown words:")
+    print(dataframe.head(number))
+    print()
+    for i in dataframe.head(number).itertuples():
+        print("\nDo you know the following word?\n")
+        format_definition(i[1])
+        print()
+        known = input()
+        unknown = []
+        
+        with open("known_words.txt", "a") as myfile:
+            if known.lower() == "yes" or known.lower() == "y":
+                myfile.write(i[1] + "\n")
+            else:
+                unknown.append(i[1])
+    return unknown
+
+known_words = [x.strip() for x in open('known_words.txt', 'r').readlines()] # pull info from txt
+top_unknown_words = df[~df.word.isin(known_words)] # delete words in master list if there's overlap
+unknown_master_words = are_top_words_known(top_unknown_words,5) # test top 5 words of master list
+known_words = [x.strip() for x in open('known_words.txt', 'r').readlines()]
+article_top_unknown_words = article_data_df[~article_data_df.word.isin(known_words)] # delete words in article list if _now_ known
+unknown_article_words = are_top_words_known(article_top_unknown_words,5) # test top 5 words of article list
+print()
+
 # APPEND DEFINITIONS TO DOCUMENT
 d = docx.Document("Imported article.docx")
 d.add_page_break()
@@ -159,13 +189,8 @@ with open(f"csvs/Frequency_{now_str}.csv", newline="", encoding="utf-8-sig") as 
     d.save("Imported article.docx")
 logging.info("5 definitions appended to document")
 
-known_words = [x.strip() for x in open('known_words.txt', 'r').readlines()]
-top_unknown_words = df[~df.word.isin(known_words)]
-print()
-print(top_unknown_words.head())
 
-# TODO Ask if 10 words are known. ##############################################################################
-#       if known, tick off
-#       if unknown, email
+
+
 # TODO Make an article highlighter to highlight known words/ unknown by frequency ##############################
 print("\nDone!\n")
